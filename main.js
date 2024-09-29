@@ -1,38 +1,42 @@
-// Creates game board for tic-tac-toe game
 function GameBoard() {
   const rows = 3;
   const columns = 3;
+
   let board = initializeBoard();
 
-  // Initialize board to starting state
   function initializeBoard() {
     const newBoard = [];
-    // 2-d array where each element is a board cell object
+
     for (let i = 0; i < rows; ++i) {
       newBoard[i] = [];
       for (let j = 0; j < columns; ++j) {
         newBoard[i].push(Cell());
       }
     }
+
     return newBoard;
   }
 
-  // Resets the board back to its starting state
   const resetBoard = () => {
+    console.log("Resetting board...");
     board = initializeBoard();
-    console.log("Board has been reset.");
+    console.log("Board reset");
   };
 
-  // Gets entire board that UI needs to render it.
   const getBoard = () => board;
 
-  // set the players position
-  const setToken = (row, column, player) => {
-    if (row >= 3 || column >= 3 || board[row][column].getCellValue() != 0) {
+  const playRound = (row, column, player) => {
+    if (
+      row >= rows ||
+      column >= columns ||
+      row < 0 ||
+      column < 0 ||
+      board[row][column].getCellValue() !== 0
+    ) {
       console.log("Cannot place token here!");
       return false;
     } else {
-      board[row][column].setCell(player);
+      board[row][column].setCellValue(player);
     }
     return true;
   };
@@ -45,26 +49,25 @@ function GameBoard() {
     console.log(boardWithCellValues);
   };
 
-  return { getBoard, setToken, printBoard, resetBoard };
+  return { playRound, printBoard, getBoard, resetBoard };
 }
 
-// cell objects that store the state
-// of each row / column position on the
-// game board
 function Cell() {
   let value = 0;
 
-  const setCell = (token) => {
+  const setCellValue = (token) => {
     value = token;
   };
 
   const getCellValue = () => value;
 
-  return { setCell, getCellValue };
+  return { setCellValue, getCellValue };
 }
 
-function GameController(player1 = "player 1", player2 = "player 2") {
+function GameController(player1 = "player1", player2 = "player2") {
   const board = GameBoard();
+
+  let isGameOver = false;
 
   const players = [
     {
@@ -78,46 +81,71 @@ function GameController(player1 = "player 1", player2 = "player 2") {
   ];
 
   let activePlayer = players[0];
-
   const switchPlayerTurn = () => {
+    console.log("Switching players...");
     activePlayer = activePlayer === players[0] ? players[1] : players[0];
+    console.log(`${getActivePlayer().name} turn`);
   };
   const getActivePlayer = () => activePlayer;
 
-  const printNewRound = () => {
-    console.log(`${getActivePlayer().name} turn`);
-    board.printBoard();
-  };
-
   const playerRound = (row, column) => {
-    let validMove = board.setToken(row, column, getActivePlayer().token);
+    if (isGameOver) {
+      console.log("The game is over! Start a new game to play again!");
+      return; // Prevent further moves
+    }
 
-    // TODO: implement UI to get user input
-    // while (!validMove) {
-    //   // set position for current player
-    //   console.log(
-    //     `Placing ${getActivePlayer().name}'s token '${
-    //       getActivePlayer().token
-    //     }' at position row: ${row} column: ${column}`
-    //   );
+    let validMove = board.playRound(row, column, getActivePlayer().token);
 
-    //   validMove = board.setToken(row, column, getActivePlayer().token);
-    // }
     if (validMove) {
-      // check for winner
-      if (checkWinner(row, column)) {
+      if (isWinner(row, column)) {
+        printNewRound();
         printWinner();
-        return; // End the game after a win
+        isGameOver = true;
+        return;
       }
 
-      // other wise switch the players turn and print
-      // the game board with updated move
-      switchPlayerTurn();
+      if (isTie()) {
+        printNewRound();
+        printTie();
+        isGameOver = true;
+        return;
+      }
+
       printNewRound();
+      switchPlayerTurn();
     }
   };
 
-  const checkWinner = (row, column) => {
+  const isTie = () => {
+    const boardState = board.getBoard();
+
+    // check if all cells are filled and no winner exists
+    const isFullBoard = boardState.every((row) =>
+      row.every((cell) => cell.getCellValue() !== 0)
+    );
+    // true if full otherwise false
+    return isFullBoard;
+  };
+
+  const printNewRound = () => {
+    console.log("printing round...");
+
+    board.printBoard();
+  };
+
+  const printWinner = () => {
+    console.log(
+      `${getActivePlayer().token}'s wins! congratulations ${
+        getActivePlayer().name
+      }! `
+    );
+  };
+
+  const printTie = () => {
+    console.log("It's a scratch! Nobody wins!");
+  };
+
+  const isWinner = (row, column) => {
     const boardState = board.getBoard();
 
     let rowWin = true;
@@ -127,7 +155,7 @@ function GameController(player1 = "player 1", player2 = "player 2") {
         break;
       }
     }
-    if (rowWin) return true;
+    if (rowWin) return rowWin;
 
     let columnWin = true;
     for (let i = 0; i < 3; ++i) {
@@ -136,11 +164,12 @@ function GameController(player1 = "player 1", player2 = "player 2") {
         break;
       }
     }
-    if (columnWin) return true;
+    if (columnWin) return columnWin;
 
-    let diagWin1 = true; // (top-left to bottom-right)
+    // check top-left to bottom-right diagonal
+    let diagWin1 = true;
     if (row === column) {
-      // only check if move is on the main diagonal (1,1 | 2,2 | 3,3)
+      // row always is the same as column
       for (let i = 0; i < 3; ++i) {
         if (boardState[i][i].getCellValue() !== getActivePlayer().token) {
           diagWin1 = false;
@@ -150,11 +179,12 @@ function GameController(player1 = "player 1", player2 = "player 2") {
     } else {
       diagWin1 = false;
     }
-    if (diagWin1) return true;
+    if (diagWin1) return diagWin1;
 
-    let diagWin2 = true; // (top-right to bottom-left)
+    // check top-right to bottom-left diagonal
+    let diagWin2 = true;
     if (row + column === 2) {
-      // only check if move is on the other diagonal (0,2 | 1,1 | 2,0)
+      // row + column will always be 2
       for (let i = 0; i < 3; ++i) {
         if (boardState[i][2 - i].getCellValue() !== getActivePlayer().token) {
           diagWin2 = false;
@@ -164,38 +194,109 @@ function GameController(player1 = "player 1", player2 = "player 2") {
     } else {
       diagWin2 = false;
     }
-    if (diagWin2) return true;
-
-    return false;
-  };
-
-  const printWinner = () => {
-    console.log(`The winner is ${getActivePlayer().name}`);
-    board.printBoard();
-    gameReset();
+    if (diagWin2) return diagWin2;
   };
 
   const gameReset = () => {
-    board.resetBoard();
+    console.log("resetting board...");
     activePlayer = players[0];
-    console.log("The game has been reset.");
+    isGameOver = false;
+    board.resetBoard();
     printNewRound();
   };
 
-  // print initial game board
+  // print the initial game board
   printNewRound();
 
-  return { getActivePlayer, playerRound, gameReset };
+  return { getActivePlayer, playerRound, gameReset, getBoard: board.getBoard };
 }
 
-const game = GameController();
+function screenController() {
+  const game = GameController();
+  const playerTurnH2 = document.querySelector(".turn");
+  const playerTokenH3 = document.querySelector(".token");
+  const boardDiv = document.querySelector(".board");
+  const resetBtn = document.getElementById("reset-btn");
 
-// Example player moves
-game.playerRound(1, 1); // X
-game.playerRound(0, 2); // O
-game.playerRound(2, 2); // X
-game.playerRound(1, 0); // O
-game.playerRound(0, 0); // X
-game.playerRound(1, 2); // O
-game.playerRound(2, 0); // X
-game.playerRound(0, 1); // O
+  const updateScreen = () => {
+    // clear the board
+    boardDiv.textContent = "";
+
+    //get the newest version of board and player turn
+    const board = game.getBoard();
+    const activePlayer = game.getActivePlayer();
+
+    // Display the player's turn
+    playerTurnH2.textContent = `${activePlayer.name}`;
+    // Display the player's token
+    playerTokenH3.textContent = `${activePlayer.token}`;
+
+    // Render the board squares
+    board.forEach((row, rowIndex) => {
+      row.forEach((cell, colIndex) => {
+        // create a clickable button for each cell
+        const cellButton = document.createElement("button");
+        cellButton.classList.add("cell");
+        // Create a data attribute to identify the column and row.
+        // This makes it easier to pass into our 'playRound' function
+        cellButton.dataset.row = rowIndex;
+        cellButton.dataset.column = colIndex;
+        cellButton.textContent = cell.getCellValue();
+
+        // disable the button if it already has a value
+        if (cell.getCellValue() !== 0) {
+          cellButton.disabled = true;
+        }
+
+        // Add the button to the board
+        boardDiv.appendChild(cellButton);
+      });
+    });
+  };
+
+  // Add event listener for the board
+  const clickHandleBoard = (e) => {
+    // check if a cell button was clicked
+    if (e.target.matches(".cell")) {
+      const row = e.target.dataset.row;
+      const column = e.target.dataset.column;
+
+      // play the round at the clicked cell position
+      game.playerRound(parseInt(row), parseInt(column));
+
+      // update the screen after the move
+      updateScreen();
+    }
+  };
+
+  // Attach event listener to the board div
+  boardDiv.addEventListener("click", clickHandleBoard);
+
+  // Reset the game board
+  resetBtn.addEventListener("click", () => {
+    game.gameReset();
+    updateScreen();
+  });
+
+  // render the initial state of the game
+  updateScreen();
+}
+
+screenController();
+
+// tie game
+// game.playerRound(0, 0); // X
+// game.playerRound(0, 1); // O
+// game.playerRound(0, 2); // X
+// game.playerRound(1, 1); // O
+// game.playerRound(1, 0); // X
+// game.playerRound(1, 2); // O
+// game.playerRound(2, 1); // X
+// game.playerRound(2, 0); // O
+// game.playerRound(2, 2); // X
+
+// game.playerRound(1, 1); // X
+// game.playerRound(0, 2); // O
+// game.playerRound(2, 2); // X
+// game.playerRound(1, 0); // O
+// game.playerRound(0, 0); // X
