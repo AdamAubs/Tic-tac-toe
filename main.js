@@ -88,6 +88,8 @@ function GameController(player1 = "player1", player2 = "player2") {
   };
   const getActivePlayer = () => activePlayer;
 
+  const getIsGameOver = () => isGameOver;
+
   const playerRound = (row, column) => {
     if (isGameOver) {
       console.log("The game is over! Start a new game to play again!");
@@ -208,7 +210,15 @@ function GameController(player1 = "player1", player2 = "player2") {
   // print the initial game board
   printNewRound();
 
-  return { getActivePlayer, playerRound, gameReset, getBoard: board.getBoard };
+  return {
+    getActivePlayer,
+    playerRound,
+    gameReset,
+    getBoard: board.getBoard,
+    getIsGameOver,
+    isWinner,
+    isTie,
+  };
 }
 
 function screenController() {
@@ -217,6 +227,10 @@ function screenController() {
   const playerTokenH3 = document.querySelector(".token");
   const boardDiv = document.querySelector(".board");
   const resetBtn = document.getElementById("reset-btn");
+
+  const dialog = document.getElementById("end-game-dialog");
+  const dialogMessage = document.getElementById("dialog-message");
+  const dialogResetBtn = document.getElementById("dialog-reset-btn");
 
   const updateScreen = () => {
     // clear the board
@@ -241,7 +255,11 @@ function screenController() {
         // This makes it easier to pass into our 'playRound' function
         cellButton.dataset.row = rowIndex;
         cellButton.dataset.column = colIndex;
-        cellButton.textContent = cell.getCellValue();
+        if (cell.getCellValue() === 0) {
+          cellButton.textContent = "";
+        } else {
+          cellButton.textContent = cell.getCellValue();
+        }
 
         // disable the button if it already has a value
         if (cell.getCellValue() !== 0) {
@@ -254,23 +272,45 @@ function screenController() {
     });
   };
 
+  const handleEndGame = (message) => {
+    dialogMessage.textContent = message;
+    dialog.showModal();
+  };
+
   // Add event listener for the board
   const clickHandleBoard = (e) => {
     // check if a cell button was clicked
     if (e.target.matches(".cell")) {
-      const row = e.target.dataset.row;
-      const column = e.target.dataset.column;
+      const row = parseInt(e.target.dataset.row);
+      const column = parseInt(e.target.dataset.column);
 
       // play the round at the clicked cell position
-      game.playerRound(parseInt(row), parseInt(column));
+      game.playerRound(row, column);
 
-      // update the screen after the move
-      updateScreen();
+      // Check if there's a winner or a tie
+      if (game.getIsGameOver()) {
+        if (game.isWinner(row, column)) {
+          updateScreen();
+          handleEndGame(`${game.getActivePlayer().name} wins!`);
+        } else if (game.isTie()) {
+          updateScreen();
+          handleEndGame("It's a tie");
+        }
+      } else {
+        updateScreen();
+      }
     }
   };
 
   // Attach event listener to the board div
   boardDiv.addEventListener("click", clickHandleBoard);
+
+  // Reset the game board from dialog button
+  dialogResetBtn.addEventListener("click", () => {
+    game.gameReset();
+    dialog.close();
+    updateScreen();
+  });
 
   // Reset the game board
   resetBtn.addEventListener("click", () => {
