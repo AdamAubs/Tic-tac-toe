@@ -3,9 +3,15 @@ body {
   height: 100%; /* make sure body takes full height */
   margin: 0px; /*remove default margin*/
   display: flex; /* use flexbox for centering */
+  flex-direction: column; /* stack children vertically */
   justify-content: center; /* center horzontally */
   align-items: center; /* center vertically */
   background-color: #f0f0f0;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 20px;
 }
 
 .container {
